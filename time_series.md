@@ -170,7 +170,7 @@ fig, ax, plume_data = maps.add_plume_contours(fig, ax, landfill[0], landfill[1],
 
 # Show the resulting map with contours
 plt.show()
-
+print(concentration.shape)
 ```
 
 ```python
