@@ -183,7 +183,7 @@ def find_closest_index(lon_values, lat_values, target_lon, target_lat):
     Parameters:
     lon_values (array-like): Array of longitude values from the mesh grid.
     lat_values (array-like): Array of latitude values from the mesh grid.
-    target_lon (float): Longitude of the target coordinate.
+    target_lon:q (float): Longitude of the target coordinate.
     target_lat (float): Latitude of the target coordinate.
 
     Returns:
@@ -231,6 +231,18 @@ print(f"Methane concentration: {ppm_value:.2f} ppm")
 ```
 
 ```python
+emission_rate = q 
+wind_speed = u 
+wind_direction = wind_angle 
+source_height = h 
+source_width = ls 
+stability_class = case 
+
 # Rotate line source with prevaling wind direction
+from concentration_grid import ConcentrationGrid 
+plume_grid = ConcentrationGrid(x,y,z)
+plume_grid.add_concentration_source(emission_rate, wind_speed, source_height, stability_class, source_width)
+
+def cone
 
 ```
