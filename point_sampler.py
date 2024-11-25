@@ -3,9 +3,9 @@ import pandas as pd
 from geopy.distance import geodesic 
 import constants as constants
 
-
+DENOMINATOR_ZERO_THRESHOLD = 1e-10
 ZERO_THRESHOLD_KM = 0.001
-KM_IN_M = 1000.0
+KILOMETRE = 1000.0
 ## Theory from https://gaftp.epa.gov/Air/aqmg/SCRAM/models/other/isc3/isc3v2.pdf
 PASQUILL_GIFFORD_STABILITY_CLASSES = pd.Index(['A','B','C','D','E','F'])
 PG_STABILITY_DICT  = {"a" : [170.0, 98.0, 61.0, 32.0, 21.0, 14.0], 
@@ -17,8 +17,9 @@ PG_STABILITY_PARAMETERS = pd.DataFrame(data = PG_STABILITY_DICT,
 PG_Y_PRE_EXPONENTIAL = 465.11628
 
 class PointSampler: 
-    def __init__ (self, sampler_location):
+    def __init__ (self, sampler_location, sampler_height):
         self.sampler_location = sampler_location 
+        self.sampler_height = np.asarray(sampler_height)
 
     def add_source(self, source_location, source_width_meters, effective_stack_height):
         self.source_location = source_location
@@ -30,19 +31,20 @@ class PointSampler:
         return self.conc_at_point(downwind_distance, crosswind_distance, wind_speed, stability_class, emission_rate)
 
     def conc_at_point(self, downwind_distance, crosswind_distance, wind_speed, stability_class, emission_rate):
-        downwind_distance_km = downwind_distance / KM_IN_M 
+        downwind_distance_km = downwind_distance / KILOMETRE 
 
         concentration = np.zeros_like(downwind_distance) 
 
         downwind_distance_km = np.asarray(downwind_distance_km)
-        positive_distance_indices = downwind_distance_km >= ZERO_THRESHOLD_KM
-        positive_downwind_distance = downwind_distance_km[positive_distance_indices]
+        positive_distance_index = downwind_distance_km >= ZERO_THRESHOLD_KM
+        positive_downwind_distance = downwind_distance_km[positive_distance_index]
 
-        if np.any(positive_distance_indices): 
+        if np.any(positive_distance_index): 
             standard_deviations = self.calculate_standard_deviations(positive_downwind_distance, wind_speed, 
                                                                         stability_class)
-            denominator = 2 * np.sqrt(2 * np.pi) * wind_speed * 
+            denominator = self.calculate_denominator(wind_speed, standard_deviations[1]) 
 
+            numerator = self.calculate_numerator(
 
 
         return concentration
@@ -63,11 +65,20 @@ class PointSampler:
         return downwind_distance, crosswind_distance 
 
     def calculate_standard_deviations(self, downwind_distance_km, wind_speed, stability_class):
-        # TODO: dictionary for a,b,c,d of case?  
+        current_pg_params = {'a': PG_STABILITY_PARAMETERS.loc[stability_class,'a'],
+                             'b': PG_STABILITY_PARAMETERS.loc[stability_class,'b'],
+                             'c': PG_STABILITY_PARAMETERS.loc[stability_class,'c'],
+                             'd': PG_STABILITY_PARAMETERS.loc[stability_class,'d']}
 
-        standard_deviation_z = coefficient_a * downwind_distance_km ** exponential_b 
+        standard_deviation_z = current_pg_params['a'] * downwind_distance_km ** current_pg_params['b'] 
 
-        y_angle_term = np.radians(coefficient_c - coefficient_d * np.log(downwind_distance_km))
+        y_angle_term = np.radians(current_pg_params['c'] - current_pg_params['d'] * np.log(downwind_distance_km))
         standard_deviation_y = PG_Y_PRE_EXPONENTIAL * downwind_distance_km * np.tan(y_angle_term)
 
         return standard_deviation_y, standard_deviation_z
+
+    def calculate_denominator(self, wind_speed, standard_deviation_z):
+        denominator = 2 * np.sqrt(2 * np.pi) * wind_speed * standard_deviation_z 
+        denominator_no_zeroes = np.maximum(denominator,DENOMINATOR_ZERO_THRESHOLD)
+        return denominator_no_zeroes
+
