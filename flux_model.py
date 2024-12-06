@@ -120,7 +120,6 @@ def conc_line(q, u, x, y, z, h, ls, case):
 
     if np.any(positive_x):
         x_km_pos = x_km[positive_x]
-
         # Retrieve parameters for the given case (0-based indexing)
         c_case = c[case]
         d_case = d[case]
@@ -142,7 +141,6 @@ def conc_line(q, u, x, y, z, h, ls, case):
 
         # Calculate sigma_y
         sigma_y = constant * x_km_pos * tan_term
-
         # Denominator of the concentration equation
         denominator = 2 * np.sqrt(2 * np.pi) * u * a_case * x_km_pos ** b_case
 

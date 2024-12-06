@@ -9,7 +9,7 @@ jupyter:
   kernelspec:
     display_name: gaussian_mixing
     language: python
-    name: methane_flux
+    name: python3
 ---
 
 ```python
@@ -138,6 +138,7 @@ from matplotlib import pyplot as plt
 import flux_maps as maps
 import flux_model as model
 
+importlib.reload(sys.modules['flux_model'])
 
 # Parameters
 q = 1.0       # Emission rate in grams per second
@@ -158,11 +159,10 @@ fig, ax = maps.base_map(landfill, sewage, sampler)
 fig, ax = maps.add_wind_direction(ax, wind_angle)
 
 # Create the coordinate grids
-x = np.linspace(0, 2000, 1000)
-y = np.linspace(-1000, 1000, 1000)
+x = np.linspace(0, 2000, 2000)
+y = np.linspace(-1000, 1000, 2000)
 z = np.linspace(0, 700, 50)
 X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-
 # Compute the concentration data
 concentration = model.conc_line(q, u, X, Y, Z, h, ls, case)
 
@@ -203,6 +203,8 @@ def find_closest_index(lon_values, lat_values, target_lon, target_lat):
 
 closest_index = find_closest_index(plume_data[0], plume_data[1], sampler[0], sampler[1])
 
+print(closest_index)
+
 concentration_at_sampler = plume_data[2][closest_index]
 print(concentration_at_sampler)
 ```
@@ -236,13 +238,98 @@ wind_speed = u
 wind_direction = wind_angle 
 source_height = h 
 source_width = ls 
-stability_class = case 
+stability_class = chr(65 + case)
 
-# Rotate line source with prevaling wind direction
-from concentration_grid import ConcentrationGrid 
-plume_grid = ConcentrationGrid(x,y,z)
-plume_grid.add_concentration_source(emission_rate, wind_speed, source_height, stability_class, source_width)
+# Sources, lon and lat
+landfill = (52.246, 0.1436)
+sewage = (52.2335, 0.157)
+sampler = (52.237111, 0.144343)
 
-def cone
+# Rotate line source with prevaling wind direction and reload imports
+
+import sys 
+import importlib
+
+importlib.reload(sys.modules['point_sampler'])
+importlib.reload(sys.modules['flux_model'])
+
+from point_sampler import PointSampler
+microsoft_sampler = PointSampler(sampler, source_height) 
+microsoft_sampler.add_source(landfill, source_width, source_height)
+concentration = microsoft_sampler.sample_concentration(wind_speed, stability_class, emission_rate, wind_direction)
+ppm_value = g_m3_to_ppm(concentration)
+
+print(f'{concentration=}')
+print(f'{ppm_value=}')
+```
+```python
+from point_sampler import PointSampler
+import flux_model as model
+importlib.reload(sys.modules['point_sampler'])
+importlib.reload(sys.modules['flux_model'])
 
 ```
+
+```python
+# Test the point sampler vs nearest index methods at various points in the plume range and plot 
+range_lat = np.linspace(52.233, 52.246, 100)
+range_lon = np.linspace(0.143, 0.143, 100) 
+
+plume_grid_conc =[]
+point_sample_conc = []
+
+for lat, lon in zip(range_lat, range_lon):
+    closest_index = find_closest_index(plume_data[0], plume_data[1], lon, lat)
+    print(closest_index)
+    concentration_at_sampler = plume_data[2][closest_index]
+    ppm_plumegrid = g_m3_to_ppm(concentration_at_sampler)
+    plume_grid_conc.append(ppm_plumegrid)
+
+    # find with point sampler: 
+    microsoft_sampler = PointSampler((lat, lon), source_height) 
+    microsoft_sampler.add_source(landfill, source_width, source_height) 
+    concentration = microsoft_sampler.sample_concentration(wind_speed, stability_class, emission_rate, wind_direction) 
+    ppm_pointsample = g_m3_to_ppm(concentration)
+    point_sample_conc.append(ppm_pointsample)
+
+plt.plot(range_lat, point_sample_conc, label='Point Sampler')
+plt.plot(range_lat, plume_grid_conc, label='Plume Grid')
+``` 
+```python 
+sampler = (52.237111, 0.144343) 
+source_height = 10 
+landfill = (52.246, 0.1436)
+microsoft_sampler = PointSampler(sampler, source_height) 
+microsoft_sampler.add_source(landfill, source_width, source_height) 
+concentration_model = microsoft_sampler.sample_concentration(data['ws'], data['stability_class'], q, data['wd'])
+
+
+# Plot time series as above but with modelled concentration in both methods 
+def plot_combined_time_series_with_model(data, window=12):
+    fig, axes = plt.subplots(6, 1, figsize=(15, 12), sharex=True)
+
+    # Plot Temperature
+    plot_time_series_subplot(axes[0], data['date'], data['temp'], 'Temperature (°C)', 'Temperature (°C)', 'tab:red', window)
+
+    # Plot Methane Concentration
+    plot_time_series_subplot(axes[1], data['date'], data['ch4_ppb'], 'Methane Concentration (ppb)', 'Methane (CH₄)', 'tab:green', window)
+
+    # Plot Relative Humidity
+    plot_time_series_subplot(axes[2], data['date'], data['rh'], 'Relative Humidity (%)', 'Relative Humidity', 'tab:blue', window)
+
+    # Plot Wind Speed
+    plot_time_series_subplot(axes[3], data['date'], data['ws'], 'Wind Speed (units)', 'Wind Speed', 'tab:purple', window)
+
+    # Plot Stability Class
+    stability_class_numeric = data['stability_class'].map({'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5})
+    plot_time_series_subplot(axes[4], data['date'], stability_class_numeric, 'Stability Class', 'Stability Class', 'tab:cyan', window)
+
+    # Plot Modelled Concentration
+    plot_time_series_subplot(axes[5], data['date'], concentration_model, 'Modelled Concentration (ppm)', 'Modelled Concentration', 'tab:orange', window)
+
+    plt.tight_layout()
+    plt.show() 
+
+plot_combined_time_series_with_model(data) 
+```
+
