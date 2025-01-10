@@ -38,7 +38,7 @@ def conc_point(q, u, x, y, z, h, case):
     concentration = np.zeros_like(x_km)
 
     # Only calculate concentration where x >= 0
-    positive_x = x_km >= 0.001  # Avoid log(0) and negative x values
+    positive_x = x_km >= 0.00001  # Avoid log(0) and negative x values
 
     if np.any(positive_x):
         x_km_pos = x_km[positive_x]

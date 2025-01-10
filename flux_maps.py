@@ -25,7 +25,7 @@ def setup_map(sample_coords, zoom_level=18):
     fig, ax = plt.subplots(figsize=(18, 18), subplot_kw={'projection': ccrs.PlateCarree()})
     ax.set_extent([sample_coords[0] - 0.005, sample_coords[0] + 0.015,
                    sample_coords[1] - 0.008, sample_coords[1] + 0.012], crs=ccrs.PlateCarree())
-    ax.add_image(google_satellite, zoom_level)
+    #ax.add_image(google_satellite, zoom_level)
     return fig, ax
 
 def plot_sampling_point(ax, sample_coords):
